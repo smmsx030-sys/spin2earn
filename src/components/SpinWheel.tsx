@@ -47,7 +47,8 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
       const isTelegram = !!window.Telegram?.WebApp?.initData;
       
       if (isTelegram && window.Adsgram) {
-        const AdController = window.Adsgram.init({ blockId: '23320', debug: true });
+        // ✅ Updated block ID to 23391 (your new ad block)
+        const AdController = window.Adsgram.init({ blockId: '23391', debug: true });
         await AdController.show();
       } else {
         // Fallback for development/browser preview
@@ -66,8 +67,6 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
     setLastPrize(null);
 
     // Determine prize locally for animation, then sync with server
-    // In a real secure app, server should determine prize. 
-    // For this demo, we determine locally and tell server (not secure, but fits "mock" requirement).
     const prize = getPrize();
     
     // Calculate rotation
