@@ -1,11 +1,18 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
+import cors from 'cors'; // ✅ Added CORS import
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
+
+  // ✅ Allow requests from your Vercel frontend and localhost
+  app.use(cors({
+    origin: ['https://spin2earn.vercel.app', 'http://localhost:5173'],
+    credentials: true
+  }));
 
   // In-memory database for demo purposes
   const users: Record<string, any> = {};
@@ -16,19 +23,19 @@ async function startServer() {
         userId: parseInt(id),
         balance: 0,
         lifetimeEarnings: 0,
-        spinsLeft: 10, // Changed from 5 to 10
+        spinsLeft: 10,
         referralCount: 0,
         referralLink: `https://t.me/spin2earnn_bot?start=ref_${id}`,
         lastSpinDate: new Date().toDateString(),
         adsWatched: 0,
-        claimedBonuses: [] // Array of milestone numbers (e.g., [5, 15])
+        claimedBonuses: []
       };
     }
     
     // Reset daily spins if needed
     const today = new Date().toDateString();
     if (users[id].lastSpinDate !== today) {
-      users[id].spinsLeft = 10; // Changed from 5 to 10
+      users[id].spinsLeft = 10;
       users[id].lastSpinDate = today;
     }
     
@@ -56,7 +63,7 @@ async function startServer() {
         lastSpinDate: new Date().toDateString(),
         adsWatched: Math.floor(Math.random() * 50),
         claimedBonuses: [],
-        name: u.name // Storing name for leaderboard display
+        name: u.name
       };
     });
   }
@@ -144,7 +151,6 @@ async function startServer() {
   });
 
   // Vite middleware for development
-  // In AI Studio preview, we treat it as development
   if (process.env.NODE_ENV !== "production" || process.env.VITE_DEV_SERVER === "true") {
     console.log("Attaching Vite middleware...");
     const vite = await createViteServer({
