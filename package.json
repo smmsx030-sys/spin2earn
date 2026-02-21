@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx server.ts",
+    "start": "tsx server.ts",          // ✅ Added this line for Render
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
