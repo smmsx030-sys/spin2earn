@@ -17,7 +17,8 @@ export interface LeaderboardData {
 
 export async function fetchUser(userId: number): Promise<UserData> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+  // ⏱️ Increased timeout to 60 seconds (from 5 seconds) to allow Render free tier to wake up
+  const timeoutId = setTimeout(() => controller.abort(), 60000);
 
   try {
     const res = await fetch(`${API_BASE}/api/user/${userId}`, { signal: controller.signal });
