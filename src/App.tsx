@@ -14,12 +14,15 @@ function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // NEW: separate state for task tab ad watch
+  const [taskAdsWatched, setTaskAdsWatched] = useState(0);
+  const [taskClaimedBonuses, setTaskClaimedBonuses] = useState<number[]>([]);
+
   const [debugStatus, setDebugStatus] = useState('Initializing...');
 
   useEffect(() => {
     const initApp = async () => {
       setDebugStatus('Checking Telegram WebApp...');
-      // Initialize Telegram WebApp
       const tg = window.Telegram?.WebApp;
       let currentTgUser: TelegramUser | null = null;
       
@@ -27,16 +30,12 @@ function App() {
         tg.ready();
         tg.expand();
         
-        // Set theme colors
-        document.body.style.backgroundColor = tg.backgroundColor || '#111827'; // gray-900 fallback
+        document.body.style.backgroundColor = tg.backgroundColor || '#111827';
         
-        // Get user data
         currentTgUser = tg.initDataUnsafe?.user || null;
         setTgUser(currentTgUser);
       }
 
-      // Determine User ID (fallback to guest if not in Telegram)
-      // Use a fixed guest ID for dev if not in Telegram
       const userId = currentTgUser?.id || 123456; 
 
       try {
@@ -44,6 +43,9 @@ function App() {
         const data = await fetchUser(userId);
         setDebugStatus('User data loaded.');
         setUserData(data);
+        // NEW: set task-specific states from fetched data
+        setTaskAdsWatched(data.taskAdsWatched || 0);
+        setTaskClaimedBonuses(data.taskClaimedBonuses || []);
       } catch (err) {
         console.error("Failed to load user data", err);
         setError(`Failed to load user data: ${err instanceof Error ? err.message : String(err)}`);
@@ -64,11 +66,6 @@ function App() {
   const handleSpinComplete = (newBalance: number, newSpins: number, newAdsWatched: number, bonusAwarded: number) => {
     if (userData) {
       const updatedClaimedBonuses = [...userData.claimedBonuses];
-      // If bonus awarded, we assume the milestone is now claimed. 
-      // Ideally backend returns the new claimed list, but we can infer or refetch.
-      // For simplicity, let's just update balance and adsWatched. 
-      // If we want to update UI immediately for claimed checkmark, we'd need to know which one.
-      // Since we know the milestones, we can check.
       if (bonusAwarded > 0) {
         if (newAdsWatched >= 5 && !updatedClaimedBonuses.includes(5)) updatedClaimedBonuses.push(5);
         if (newAdsWatched >= 15 && !updatedClaimedBonuses.includes(15)) updatedClaimedBonuses.push(15);
@@ -114,7 +111,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white font-sans pb-20">
-      {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700 p-4 sticky top-0 z-50 shadow-md">
         <div className="flex justify-between items-center max-w-md mx-auto">
           <div className="flex items-center gap-3">
@@ -139,7 +135,6 @@ function App() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="pt-6">
         {activeTab === 'spin' && userData && (
           <SpinWheel 
@@ -155,9 +150,12 @@ function App() {
             balance={userData.balance} 
             referralCount={userData.referralCount}
             referralLink={userData.referralLink}
-            adsWatched={userData.adsWatched}
-            claimedBonuses={userData.claimedBonuses}
-            setBalance={handleBalanceUpdate} 
+            // NEW: pass task-specific props
+            taskAdsWatched={taskAdsWatched}
+            taskClaimedBonuses={taskClaimedBonuses}
+            setBalance={handleBalanceUpdate}
+            setTaskAdsWatched={setTaskAdsWatched}
+            setTaskClaimedBonuses={setTaskClaimedBonuses}
           />
         )}
         {activeTab === 'withdraw' && userData && (
@@ -172,7 +170,6 @@ function App() {
         )}
       </main>
 
-      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-gray-800 border-t border-gray-700 pb-safe">
         <div className="flex justify-around items-center max-w-md mx-auto h-16">
           <button
