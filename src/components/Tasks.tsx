@@ -53,8 +53,8 @@ export default function Tasks({
   const handleTaskAdWatch = async () => {
     setIsLoadingAd(true);
     try {
-      // Show rewarded ad – use your new block ID (replace 23391 after approval)
-      const AdController = window.Adsgram?.init({ blockId: '23391', debug: true });
+      // ✅ Updated to new block ID 23588
+      const AdController = window.Adsgram?.init({ blockId: '23588', debug: true });
       if (!AdController) {
         alert("Ads service not available.");
         return;
