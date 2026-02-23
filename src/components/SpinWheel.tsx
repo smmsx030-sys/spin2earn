@@ -47,8 +47,8 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
       const isTelegram = !!window.Telegram?.WebApp?.initData;
       
       if (isTelegram && window.Adsgram) {
-        // ✅ Updated block ID to 23391 (your new ad block)
-        const AdController = window.Adsgram.init({ blockId: '23391', debug: true });
+        // ✅ UPDATED to new block ID 23588
+        const AdController = window.Adsgram.init({ blockId: '23588', debug: true });
         await AdController.show();
       } else {
         // Fallback for development/browser preview
