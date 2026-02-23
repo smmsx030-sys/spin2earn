@@ -43,22 +43,17 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
     setIsLoadingAd(true);
 
     try {
-      // Check if running in Telegram environment
       const isTelegram = !!window.Telegram?.WebApp?.initData;
       
       if (isTelegram && window.Adsgram) {
-        // ✅ UPDATED to new block ID 23588
         const AdController = window.Adsgram.init({ blockId: '23588', debug: true });
         await AdController.show();
       } else {
-        // Fallback for development/browser preview
         console.log('Not in Telegram or Adsgram not loaded. Simulating ad view...');
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate 3s ad
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     } catch (error) {
       console.error('Ad failed to show:', error);
-      // If ad fails (e.g. no fill), we still allow the user to spin in this demo
-      // In production, you might want to show an error message
     } finally {
       setIsLoadingAd(false);
     }
@@ -66,10 +61,7 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
     setIsSpinning(true);
     setLastPrize(null);
 
-    // Determine prize locally for animation, then sync with server
     const prize = getPrize();
-    
-    // Calculate rotation
     const newRotation = rotation + 1080 + Math.random() * 360;
     setRotation(newRotation);
 
@@ -79,7 +71,6 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
         onSpinComplete(result.balance, result.spinsLeft);
         setLastPrize(prize.amount > 0 ? `You won ${prize.label}!` : 'Better luck next time!');
         
-        // Haptic feedback
         if (window.Telegram?.WebApp?.HapticFeedback) {
           window.Telegram.WebApp.HapticFeedback.notificationOccurred(prize.amount > 0 ? 'success' : 'warning');
         }
@@ -127,6 +118,29 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
           ▼
         </div>
       </div>
+
+      {/* ===== NEW: Prize Legend ===== */}
+      <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
+        <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full border border-gray-700">
+          1 BDT
+        </span>
+        <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full border border-gray-700">
+          3 BDT
+        </span>
+        <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full border border-gray-700">
+          5 BDT
+        </span>
+        <span className="px-3 py-1 bg-gray-800 text-gray-500 rounded-full border border-gray-700 line-through">
+          20 BDT
+        </span>
+        <span className="px-3 py-1 bg-gray-800 text-gray-500 rounded-full border border-gray-700 line-through">
+          50 BDT
+        </span>
+        <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full border border-gray-700">
+          Try Again
+        </span>
+      </div>
+      {/* ============================= */}
 
       {lastPrize && (
         <motion.div
