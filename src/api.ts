@@ -6,8 +6,11 @@ export interface UserData {
   spinsLeft: number;
   referralCount: number;
   referralLink: string;
-  adsWatched: number;
-  claimedBonuses: number[];
+  adsWatched: number;          // for spin tab
+  claimedBonuses: number[];     // for spin milestones
+  // NEW: fields for task tab ad watch
+  taskAdsWatched: number;
+  taskClaimedBonuses: number[];
 }
 
 export interface LeaderboardData {
@@ -17,7 +20,6 @@ export interface LeaderboardData {
 
 export async function fetchUser(userId: number): Promise<UserData> {
   const controller = new AbortController();
-  // ⏱️ Increased timeout to 60 seconds (from 5 seconds) to allow Render free tier to wake up
   const timeoutId = setTimeout(() => controller.abort(), 60000);
 
   try {
@@ -54,6 +56,22 @@ export async function completeTask(userId: number, rewardAmount: number): Promis
     body: JSON.stringify({ userId, rewardAmount })
   });
   if (!res.ok) throw new Error('Task completion failed');
+  return res.json();
+}
+
+// NEW: function for task ad watch
+export async function watchTaskAd(userId: number): Promise<{ 
+  balance: number; 
+  taskAdsWatched: number; 
+  taskClaimedBonuses: number[]; 
+  bonusAwarded: number;
+}> {
+  const res = await fetch(`${API_BASE}/api/task-ad-watch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId })
+  });
+  if (!res.ok) throw new Error('Task ad watch failed');
   return res.json();
 }
 
