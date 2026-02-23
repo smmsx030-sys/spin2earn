@@ -1,14 +1,17 @@
-import { CheckCircle, ListTodo, Copy, Users, Gift, PlayCircle } from 'lucide-react';
-import { completeTask } from '../api';
+import { CheckCircle, ListTodo, Copy, Users, Gift } from 'lucide-react';
+import { completeTask, watchTaskAd } from '../api';
+import { useState } from 'react';
 
 interface TasksProps {
   userId: number;
   balance: number;
   referralCount: number;
   referralLink: string;
-  adsWatched: number;
-  claimedBonuses: number[];
+  taskAdsWatched: number;
+  taskClaimedBonuses: number[];
   setBalance: (newBalance: number) => void;
+  setTaskAdsWatched: (val: number) => void;
+  setTaskClaimedBonuses: (val: number[]) => void;
 }
 
 const AD_MILESTONES = [
@@ -19,7 +22,19 @@ const AD_MILESTONES = [
   { count: 100, reward: 380 },
 ];
 
-export default function Tasks({ userId, balance, referralCount, referralLink, adsWatched, claimedBonuses, setBalance }: TasksProps) {
+export default function Tasks({
+  userId,
+  balance,
+  referralCount,
+  referralLink,
+  taskAdsWatched,
+  taskClaimedBonuses,
+  setBalance,
+  setTaskAdsWatched,
+  setTaskClaimedBonuses
+}: TasksProps) {
+  const [isLoadingAd, setIsLoadingAd] = useState(false);
+
   const handleTaskComplete = async (reward: number) => {
     try {
       const result = await completeTask(userId, reward);
@@ -32,6 +47,34 @@ export default function Tasks({ userId, balance, referralCount, referralLink, ad
     } catch (error) {
       console.error("Task completion failed", error);
       alert("Failed to complete task. Please try again.");
+    }
+  };
+
+  const handleTaskAdWatch = async () => {
+    setIsLoadingAd(true);
+    try {
+      // Show rewarded ad – use your new block ID (replace 23391 after approval)
+      const AdController = window.Adsgram?.init({ blockId: '23391', debug: true });
+      if (!AdController) {
+        alert("Ads service not available.");
+        return;
+      }
+      await AdController.show();
+      
+      // Call API to record watch
+      const result = await watchTaskAd(userId);
+      setBalance(result.balance);
+      setTaskAdsWatched(result.taskAdsWatched);
+      setTaskClaimedBonuses(result.taskClaimedBonuses);
+      
+      if (result.bonusAwarded > 0) {
+        alert(`🎉 Congratulations! You've earned a ${result.bonusAwarded} BDT bonus!`);
+      }
+    } catch (error) {
+      console.error("Task ad failed", error);
+      alert("Ad failed to load. Please try again.");
+    } finally {
+      setIsLoadingAd(false);
     }
   };
 
@@ -55,46 +98,44 @@ export default function Tasks({ userId, balance, referralCount, referralLink, ad
       </div>
 
       <div className="space-y-4">
-        {/* Ad Watch Bonuses */}
+        {/* Ad Watch Bonuses – Separate from Spin */}
         <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700 shadow-lg">
           <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
             <Gift className="text-pink-400" size={20} /> Ad Watch Bonuses
           </h3>
           <p className="text-sm text-gray-400 mb-4">
-            Total Ads Watched: <span className="text-white font-bold">{adsWatched}</span>
+            Watch ads and earn milestone rewards!
           </p>
           
+          <button
+            onClick={handleTaskAdWatch}
+            disabled={isLoadingAd}
+            className="w-full bg-gradient-to-r from-yellow-500 to-orange-600 text-white font-bold py-3 px-4 rounded-xl mb-4 flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isLoadingAd ? 'Loading Ad...' : '📺 Watch Ad & Earn Progress'}
+          </button>
+          
           <div className="space-y-3">
-            {AD_MILESTONES.map((milestone) => {
-              const isClaimed = claimedBonuses.includes(milestone.count);
-              const isCompleted = adsWatched >= milestone.count;
-              const progress = Math.min(100, (adsWatched / milestone.count) * 100);
-              
+            {AD_MILESTONES.map((m) => {
+              const isClaimed = taskClaimedBonuses.includes(m.count);
+              const progress = Math.min(100, (taskAdsWatched / m.count) * 100);
               return (
-                <div key={milestone.count} className="bg-gray-900 rounded-xl p-3 border border-gray-700">
+                <div key={m.count} className="bg-gray-900 rounded-xl p-3 border border-gray-700">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-300">Watch {milestone.count} Ads</span>
+                    <span className="text-sm font-medium text-gray-300">{m.count} Ads</span>
                     {isClaimed ? (
                       <span className="text-xs font-bold text-green-400 flex items-center gap-1">
                         <CheckCircle size={12} /> Claimed
                       </span>
                     ) : (
-                      <span className="text-xs font-bold text-yellow-400">
-                        {milestone.reward} BDT
-                      </span>
+                      <span className="text-xs font-bold text-yellow-400">{m.reward} BDT</span>
                     )}
                   </div>
-                  
                   <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        isCompleted ? 'bg-green-500' : 'bg-blue-500'
-                      }`}
-                      style={{ width: `${progress}%` }}
-                    />
+                    <div className="bg-blue-500 h-full rounded-full" style={{ width: `${progress}%` }} />
                   </div>
                   <div className="mt-1 text-xs text-right text-gray-500">
-                    {Math.min(adsWatched, milestone.count)}/{milestone.count}
+                    {Math.min(taskAdsWatched, m.count)}/{m.count}
                   </div>
                 </div>
               );
@@ -131,7 +172,7 @@ export default function Tasks({ userId, balance, referralCount, referralLink, ad
           </p>
         </div>
 
-        {/* Adsgram Task Component Placeholder */}
+        {/* Partner Tasks (AdsGram) – Placeholder */}
         <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700 shadow-lg">
           <h3 className="text-lg font-bold text-white mb-2">Partner Tasks</h3>
           
@@ -153,7 +194,7 @@ export default function Tasks({ userId, balance, referralCount, referralLink, ad
           </p>
         </div>
 
-        {/* Manual Tasks List (Mock) */}
+        {/* Daily Challenges (Mock) */}
         <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700 shadow-lg space-y-4">
           <h3 className="text-lg font-bold text-white">Daily Challenges</h3>
           
@@ -194,7 +235,7 @@ export default function Tasks({ userId, balance, referralCount, referralLink, ad
           </div>
         </div>
 
-        {/* Footer Links - Privacy & Terms */}
+        {/* Footer Links */}
         <div className="mt-8 text-xs text-gray-500 text-center border-t border-gray-700 pt-4">
           <p className="mb-1">© 2026 Spin2Earn. All rights reserved.</p>
           <p>
