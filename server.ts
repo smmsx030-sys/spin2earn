@@ -1,6 +1,6 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import cors from 'cors'; // ✅ Added CORS import
+import cors from 'cors';
 
 async function startServer() {
   const app = express();
@@ -8,13 +8,12 @@ async function startServer() {
 
   app.use(express.json());
 
-  // ✅ Allow requests from your Vercel frontend and localhost
   app.use(cors({
     origin: ['https://spin2earn.vercel.app', 'http://localhost:5173'],
     credentials: true
   }));
 
-  // In-memory database for demo purposes
+  // In-memory database
   const users: Record<string, any> = {};
 
   const getUser = (id: string) => {
@@ -27,8 +26,11 @@ async function startServer() {
         referralCount: 0,
         referralLink: `https://t.me/spin2earnn_bot?start=ref_${id}`,
         lastSpinDate: new Date().toDateString(),
-        adsWatched: 0,
-        claimedBonuses: []
+        adsWatched: 0,          // For spin tab
+        claimedBonuses: [],      // For spin milestones
+        // NEW: separate counters for task tab ad watch
+        taskAdsWatched: 0,
+        taskClaimedBonuses: []
       };
     }
     
@@ -42,7 +44,7 @@ async function startServer() {
     return users[id];
   };
 
-  // Generate some mock users for leaderboard
+  // Mock users for leaderboard
   if (Object.keys(users).length === 0) {
     const mockUsers = [
       { id: '101', name: 'Alice', balance: 1200, lifetimeEarnings: 5000, referralCount: 12 },
@@ -63,12 +65,15 @@ async function startServer() {
         lastSpinDate: new Date().toDateString(),
         adsWatched: Math.floor(Math.random() * 50),
         claimedBonuses: [],
-        name: u.name
+        name: u.name,
+        // NEW: also add for mock users (optional)
+        taskAdsWatched: Math.floor(Math.random() * 30),
+        taskClaimedBonuses: []
       };
     });
   }
 
-  // API Routes
+  // Existing routes
   app.get("/api/user/:id", (req, res) => {
     const user = getUser(req.params.id);
     res.json(user);
@@ -100,7 +105,7 @@ async function startServer() {
       user.lifetimeEarnings += prizeAmount;
       user.adsWatched += 1;
       
-      // Check for bonuses
+      // Check for spin milestones
       let bonusAwarded = 0;
       const milestones = [
         { ads: 5, reward: 10 },
@@ -130,6 +135,40 @@ async function startServer() {
     }
   });
 
+  // NEW: Task ad watch endpoint (separate from spin)
+  app.post("/api/task-ad-watch", (req, res) => {
+    const { userId } = req.body;
+    const user = getUser(userId.toString());
+    
+    user.taskAdsWatched += 1;
+    
+    // Check for task milestones (same reward structure)
+    let bonusAwarded = 0;
+    const milestones = [
+      { ads: 5, reward: 10 },
+      { ads: 15, reward: 40 },
+      { ads: 30, reward: 99 },
+      { ads: 50, reward: 180 },
+      { ads: 100, reward: 380 }
+    ];
+    
+    milestones.forEach(m => {
+      if (user.taskAdsWatched === m.ads && !user.taskClaimedBonuses.includes(m.ads)) {
+        user.balance += m.reward;
+        user.lifetimeEarnings += m.reward;
+        user.taskClaimedBonuses.push(m.ads);
+        bonusAwarded += m.reward;
+      }
+    });
+
+    res.json({
+      balance: user.balance,
+      taskAdsWatched: user.taskAdsWatched,
+      taskClaimedBonuses: user.taskClaimedBonuses,
+      bonusAwarded
+    });
+  });
+
   app.post("/api/task-complete", (req, res) => {
     const { userId, rewardAmount } = req.body;
     const user = getUser(userId.toString());
@@ -150,7 +189,7 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development
+  // Vite middleware
   if (process.env.NODE_ENV !== "production" || process.env.VITE_DEV_SERVER === "true") {
     console.log("Attaching Vite middleware...");
     const vite = await createViteServer({
