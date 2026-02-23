@@ -108,6 +108,39 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
             <div className="w-full h-0.5 bg-gray-600 absolute rotate-90"></div>
             <div className="w-full h-0.5 bg-gray-600 absolute rotate-135"></div>
           </div>
+
+          {/* Prize Labels positioned around the wheel */}
+          {/* Prize 1: 1 BDT - Top (0°) */}
+          <span className="absolute top-4 left-1/2 -translate-x-1/2 text-sm font-bold text-white bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
+            1
+          </span>
+
+          {/* Prize 2: 3 BDT - Top Right (60°) */}
+          <span className="absolute top-8 right-8 text-sm font-bold text-white bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
+            3
+          </span>
+
+          {/* Prize 3: 5 BDT - Bottom Right (120°) */}
+          <span className="absolute bottom-8 right-8 text-sm font-bold text-white bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
+            5
+          </span>
+
+          {/* Prize 4: 20 BDT - Bottom (180°) - Visual only, grayed out and struck through */}
+          <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-sm font-bold text-gray-500 bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg line-through opacity-60">
+            20
+          </span>
+
+          {/* Prize 5: 50 BDT - Bottom Left (240°) - Visual only, grayed out and struck through */}
+          <span className="absolute bottom-8 left-8 text-sm font-bold text-gray-500 bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg line-through opacity-60">
+            50
+          </span>
+
+          {/* Prize 6: Try Again - Top Left (300°) */}
+          <span className="absolute top-8 left-8 text-xs font-bold text-white bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
+            Try
+          </span>
+
+          {/* Center decoration */}
           <div className="absolute inset-0 flex items-center justify-center text-6xl opacity-20">
             🎡
           </div>
@@ -119,7 +152,7 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
         </div>
       </div>
 
-      {/* ===== NEW: Prize Legend ===== */}
+      {/* Prize Legend */}
       <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
         <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full border border-gray-700">
           1 BDT
@@ -140,7 +173,6 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
           Try Again
         </span>
       </div>
-      {/* ============================= */}
 
       {lastPrize && (
         <motion.div
