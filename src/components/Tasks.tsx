@@ -193,6 +193,15 @@ export default function Tasks({ userId, balance, referralCount, referralLink, ad
             </button>
           </div>
         </div>
+
+        {/* Footer Links - Privacy & Terms */}
+        <div className="mt-8 text-xs text-gray-500 text-center border-t border-gray-700 pt-4">
+          <p className="mb-1">© 2026 Spin2Earn. All rights reserved.</p>
+          <p>
+            <a href="/privacy.html" target="_blank" className="text-blue-400 underline mx-2">Privacy Policy</a> | 
+            <a href="/terms.html" target="_blank" className="text-blue-400 underline mx-2">Terms of Service</a>
+          </p>
+        </div>
       </div>
     </div>
   );
