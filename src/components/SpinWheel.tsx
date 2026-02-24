@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Coins, Loader2 } from 'lucide-react';
 import { submitSpin } from '../api';
+import { useAdSonar } from '../hooks/useAdSonar';
 
 interface SpinWheelProps {
   userId: number;
@@ -11,49 +12,52 @@ interface SpinWheelProps {
 }
 
 const PRIZES = [
-  { amount: 1, probability: 0.70, label: '1 BDT' },
-  { amount: 3, probability: 0.10, label: '3 BDT' },
-  { amount: 5, probability: 0.02, label: '5 BDT' },
-  { amount: 20, probability: 0, label: '20 BDT' }, // Visual only
-  { amount: 50, probability: 0, label: '50 BDT' }, // Visual only
-  { amount: 0, probability: 0.18, label: 'Try Again' },
+  { amount: 1, label: '1' },
+  { amount: 3, label: '3' },
+  { amount: 5, label: '5' },
+  { amount: 20, label: '20', visualOnly: true },
+  { amount: 50, label: '50', visualOnly: true },
+  { amount: 0, label: 'Try', isTry: true },
 ];
+
+// 6 segments, each 60 degrees
+const SEGMENTS = 6;
+const ANGLE_PER_SEGMENT = 360 / SEGMENTS;
 
 export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }: SpinWheelProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [lastPrize, setLastPrize] = useState<string | null>(null);
   const [isLoadingAd, setIsLoadingAd] = useState(false);
+  const { showRewardedAd, isReady } = useAdSonar('spin2earn');
 
   const getPrize = () => {
-    const rand = Math.random();
-    let cumulativeProbability = 0;
-    for (const prize of PRIZES) {
-      cumulativeProbability += prize.probability;
-      if (rand < cumulativeProbability) {
-        return prize;
-      }
-    }
-    return PRIZES[PRIZES.length - 1];
+    // Probabilities: 1 (70%), 3 (10%), 5 (2%), 0 (18%), visual prizes never awarded
+    const rand = Math.random() * 100;
+    if (rand < 70) return { amount: 1, label: '1 BDT' };
+    if (rand < 80) return { amount: 3, label: '3 BDT' };
+    if (rand < 82) return { amount: 5, label: '5 BDT' };
+    return { amount: 0, label: 'Try Again' };
   };
 
   const handleSpin = async () => {
     if (spinsLeft <= 0) return;
 
     setIsLoadingAd(true);
-
     try {
-      const isTelegram = !!window.Telegram?.WebApp?.initData;
-      
-      if (isTelegram && window.Adsgram) {
-        const AdController = window.Adsgram.init({ blockId: '23588', debug: true });
-        await AdController.show();
-      } else {
-        console.log('Not in Telegram or Adsgram not loaded. Simulating ad view...');
-        await new Promise(resolve => setTimeout(resolve, 3000));
+      if (!isReady) {
+        alert("Ads service not ready. Please try again.");
+        return;
+      }
+      const adCompleted = await showRewardedAd();
+      if (!adCompleted) {
+        alert("Ad was not completed. Try again.");
+        return;
       }
     } catch (error) {
-      console.error('Ad failed to show:', error);
+      console.error('Ad failed:', error);
+      alert("Ad failed to load. Please try again.");
+      return;
     } finally {
       setIsLoadingAd(false);
     }
@@ -62,14 +66,25 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
     setLastPrize(null);
 
     const prize = getPrize();
-    const newRotation = rotation + 1080 + Math.random() * 360;
+    // Determine which segment to land on (approximate based on prize)
+    let targetSegment = 0;
+    if (prize.amount === 1) targetSegment = 0; // 1
+    else if (prize.amount === 3) targetSegment = 1; // 3
+    else if (prize.amount === 5) targetSegment = 2; // 5
+    else targetSegment = 5; // Try again
+
+    // Calculate rotation to land on that segment (pointing to top, with some randomness)
+    const baseRotation = 360 - (targetSegment * ANGLE_PER_SEGMENT) - ANGLE_PER_SEGMENT / 2;
+    const extraSpins = 5 * 360; // 5 full rotations
+    const randomOffset = (Math.random() - 0.5) * 20; // small random offset
+    const newRotation = rotation + extraSpins + baseRotation + randomOffset;
     setRotation(newRotation);
 
     setTimeout(async () => {
       try {
         const result = await submitSpin(userId, prize.amount);
         onSpinComplete(result.balance, result.spinsLeft);
-        setLastPrize(prize.amount > 0 ? `You won ${prize.label}!` : 'Better luck next time!');
+        setLastPrize(prize.label);
         
         if (window.Telegram?.WebApp?.HapticFeedback) {
           window.Telegram.WebApp.HapticFeedback.notificationOccurred(prize.amount > 0 ? 'success' : 'warning');
@@ -84,7 +99,7 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-4 space-y-8 w-full max-w-md mx-auto">
+    <div className="flex flex-col items-center justify-center p-4 space-y-6 w-full max-w-md mx-auto">
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
           <Coins className="text-yellow-400" /> Spin & Win
@@ -95,64 +110,61 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
       </div>
 
       <div className="relative w-64 h-64">
-        {/* Wheel Background */}
+        {/* Wheel container */}
         <motion.div
-          className="w-full h-full rounded-full border-4 border-yellow-500 bg-gray-800 relative overflow-hidden shadow-xl"
+          className="w-full h-full rounded-full border-4 border-yellow-500 bg-gray-800 shadow-xl relative overflow-hidden"
           animate={{ rotate: rotation }}
           transition={{ duration: 3, ease: "circOut" }}
         >
-          {/* Simple segments visualization */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-full h-0.5 bg-gray-600 absolute rotate-0"></div>
-            <div className="w-full h-0.5 bg-gray-600 absolute rotate-45"></div>
-            <div className="w-full h-0.5 bg-gray-600 absolute rotate-90"></div>
-            <div className="w-full h-0.5 bg-gray-600 absolute rotate-135"></div>
+          {/* 6 colored segments */}
+          <div className="absolute inset-0">
+            {PRIZES.map((prize, index) => {
+              const angle = index * ANGLE_PER_SEGMENT;
+              const color = prize.visualOnly ? 'bg-gray-700' : (prize.isTry ? 'bg-gray-600' : 'bg-blue-900');
+              return (
+                <div
+                  key={index}
+                  className={`absolute top-0 left-1/2 w-1/2 h-1/2 origin-bottom-left ${color}`}
+                  style={{
+                    transform: `rotate(${angle}deg) skewY(-${90 - ANGLE_PER_SEGMENT}deg)`,
+                    borderRight: '1px solid #374151',
+                  }}
+                />
+              );
+            })}
           </div>
 
-          {/* Prize Labels positioned around the wheel */}
-          {/* Prize 1: 1 BDT - Top (0°) */}
-          <span className="absolute top-4 left-1/2 -translate-x-1/2 text-sm font-bold text-white bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
-            1
-          </span>
-
-          {/* Prize 2: 3 BDT - Top Right (60°) */}
-          <span className="absolute top-8 right-8 text-sm font-bold text-white bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
-            3
-          </span>
-
-          {/* Prize 3: 5 BDT - Bottom Right (120°) */}
-          <span className="absolute bottom-8 right-8 text-sm font-bold text-white bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
-            5
-          </span>
-
-          {/* Prize 4: 20 BDT - Bottom (180°) - Visual only, grayed out and struck through */}
-          <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-sm font-bold text-gray-500 bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg line-through opacity-60">
-            20
-          </span>
-
-          {/* Prize 5: 50 BDT - Bottom Left (240°) - Visual only, grayed out and struck through */}
-          <span className="absolute bottom-8 left-8 text-sm font-bold text-gray-500 bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg line-through opacity-60">
-            50
-          </span>
-
-          {/* Prize 6: Try Again - Top Left (300°) */}
-          <span className="absolute top-8 left-8 text-xs font-bold text-white bg-gray-700 rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
-            Try
-          </span>
-
-          {/* Center decoration */}
-          <div className="absolute inset-0 flex items-center justify-center text-6xl opacity-20">
-            🎡
-          </div>
+          {/* Segment labels */}
+          {PRIZES.map((prize, index) => {
+            const angle = index * ANGLE_PER_SEGMENT + ANGLE_PER_SEGMENT / 2;
+            const radius = 40; // percentage from center
+            const x = 50 + radius * Math.sin(angle * Math.PI / 180);
+            const y = 50 - radius * Math.cos(angle * Math.PI / 180);
+            const textColor = prize.visualOnly ? 'text-gray-400' : (prize.isTry ? 'text-gray-300' : 'text-yellow-400');
+            return (
+              <div
+                key={`label-${index}`}
+                className={`absolute transform -translate-x-1/2 -translate-y-1/2 font-bold ${textColor} ${prize.visualOnly ? 'line-through' : ''}`}
+                style={{
+                  left: `${x}%`,
+                  top: `${y}%`,
+                  fontSize: prize.isTry ? '0.7rem' : '0.9rem',
+                  textShadow: '0 0 4px black',
+                }}
+              >
+                {prize.label}
+              </div>
+            );
+          })}
         </motion.div>
-        
+
         {/* Pointer */}
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 text-red-500 z-10">
           ▼
         </div>
       </div>
 
-      {/* Prize Legend */}
+      {/* Prize legend */}
       <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
         <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full border border-gray-700">
           1 BDT
