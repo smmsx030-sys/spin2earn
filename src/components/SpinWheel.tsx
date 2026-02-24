@@ -20,9 +20,18 @@ const PRIZES = [
   { amount: 0, label: 'Try', isTry: true },
 ];
 
-// 6 segments, each 60 degrees
 const SEGMENTS = 6;
 const ANGLE_PER_SEGMENT = 360 / SEGMENTS;
+
+// Distinct colors for each segment (index 0 to 5)
+const SEGMENT_COLORS = [
+  'bg-red-600',      // 1
+  'bg-orange-500',   // 3
+  'bg-yellow-500',   // 5
+  'bg-green-600',    // 20 (visual only)
+  'bg-blue-600',     // 50 (visual only)
+  'bg-purple-600',   // Try
+];
 
 export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }: SpinWheelProps) {
   const [isSpinning, setIsSpinning] = useState(false);
@@ -32,7 +41,6 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
   const { showRewardedAd, isReady } = useAdSonar('spin2earn');
 
   const getPrize = () => {
-    // Probabilities: 1 (70%), 3 (10%), 5 (2%), 0 (18%), visual prizes never awarded
     const rand = Math.random() * 100;
     if (rand < 70) return { amount: 1, label: '1 BDT' };
     if (rand < 80) return { amount: 3, label: '3 BDT' };
@@ -66,17 +74,15 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
     setLastPrize(null);
 
     const prize = getPrize();
-    // Determine which segment to land on (approximate based on prize)
     let targetSegment = 0;
-    if (prize.amount === 1) targetSegment = 0; // 1
-    else if (prize.amount === 3) targetSegment = 1; // 3
-    else if (prize.amount === 5) targetSegment = 2; // 5
-    else targetSegment = 5; // Try again
+    if (prize.amount === 1) targetSegment = 0;
+    else if (prize.amount === 3) targetSegment = 1;
+    else if (prize.amount === 5) targetSegment = 2;
+    else targetSegment = 5;
 
-    // Calculate rotation to land on that segment (pointing to top, with some randomness)
     const baseRotation = 360 - (targetSegment * ANGLE_PER_SEGMENT) - ANGLE_PER_SEGMENT / 2;
-    const extraSpins = 5 * 360; // 5 full rotations
-    const randomOffset = (Math.random() - 0.5) * 20; // small random offset
+    const extraSpins = 5 * 360;
+    const randomOffset = (Math.random() - 0.5) * 20;
     const newRotation = rotation + extraSpins + baseRotation + randomOffset;
     setRotation(newRotation);
 
@@ -110,21 +116,18 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
       </div>
 
       <div className="relative w-64 h-64">
-        {/* Wheel container */}
         <motion.div
-          className="w-full h-full rounded-full border-4 border-yellow-500 bg-gray-800 shadow-xl relative overflow-hidden"
+          className="w-full h-full rounded-full border-4 border-yellow-500 shadow-xl relative overflow-hidden"
           animate={{ rotate: rotation }}
           transition={{ duration: 3, ease: "circOut" }}
         >
-          {/* 6 colored segments */}
           <div className="absolute inset-0">
-            {PRIZES.map((prize, index) => {
+            {PRIZES.map((_, index) => {
               const angle = index * ANGLE_PER_SEGMENT;
-              const color = prize.visualOnly ? 'bg-gray-700' : (prize.isTry ? 'bg-gray-600' : 'bg-blue-900');
               return (
                 <div
                   key={index}
-                  className={`absolute top-0 left-1/2 w-1/2 h-1/2 origin-bottom-left ${color}`}
+                  className={`absolute top-0 left-1/2 w-1/2 h-1/2 origin-bottom-left ${SEGMENT_COLORS[index]}`}
                   style={{
                     transform: `rotate(${angle}deg) skewY(-${90 - ANGLE_PER_SEGMENT}deg)`,
                     borderRight: '1px solid #374151',
@@ -134,13 +137,12 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
             })}
           </div>
 
-          {/* Segment labels */}
           {PRIZES.map((prize, index) => {
             const angle = index * ANGLE_PER_SEGMENT + ANGLE_PER_SEGMENT / 2;
-            const radius = 40; // percentage from center
+            const radius = 40;
             const x = 50 + radius * Math.sin(angle * Math.PI / 180);
             const y = 50 - radius * Math.cos(angle * Math.PI / 180);
-            const textColor = prize.visualOnly ? 'text-gray-400' : (prize.isTry ? 'text-gray-300' : 'text-yellow-400');
+            const textColor = prize.visualOnly ? 'text-gray-400' : (prize.isTry ? 'text-gray-300' : 'text-white');
             return (
               <div
                 key={`label-${index}`}
@@ -158,32 +160,9 @@ export default function SpinWheel({ userId, balance, spinsLeft, onSpinComplete }
           })}
         </motion.div>
 
-        {/* Pointer */}
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 text-red-500 z-10">
           ▼
         </div>
-      </div>
-
-      {/* Prize legend */}
-      <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
-        <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full border border-gray-700">
-          1 BDT
-        </span>
-        <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full border border-gray-700">
-          3 BDT
-        </span>
-        <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full border border-gray-700">
-          5 BDT
-        </span>
-        <span className="px-3 py-1 bg-gray-800 text-gray-500 rounded-full border border-gray-700 line-through">
-          20 BDT
-        </span>
-        <span className="px-3 py-1 bg-gray-800 text-gray-500 rounded-full border border-gray-700 line-through">
-          50 BDT
-        </span>
-        <span className="px-3 py-1 bg-gray-800 text-gray-300 rounded-full border border-gray-700">
-          Try Again
-        </span>
       </div>
 
       {lastPrize && (
