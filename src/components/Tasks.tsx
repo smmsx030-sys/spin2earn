@@ -1,6 +1,7 @@
 import { CheckCircle, ListTodo, Copy, Users, Gift } from 'lucide-react';
 import { completeTask, watchTaskAd } from '../api';
 import { useState } from 'react';
+import { useAdSonar } from '../hooks/useAdSonar'; // AdSonar hook
 
 interface TasksProps {
   userId: number;
@@ -34,6 +35,7 @@ export default function Tasks({
   setTaskClaimedBonuses
 }: TasksProps) {
   const [isLoadingAd, setIsLoadingAd] = useState(false);
+  const { showRewardedAd, isReady } = useAdSonar('spin2earn'); // Use your ad unit name
 
   const handleTaskComplete = async (reward: number) => {
     try {
@@ -51,24 +53,25 @@ export default function Tasks({
   };
 
   const handleTaskAdWatch = async () => {
+    if (!isReady) {
+      alert("Ads service not ready. Please try again.");
+      return;
+    }
+
     setIsLoadingAd(true);
     try {
-      // ✅ Updated to new block ID 23588
-      const AdController = window.Adsgram?.init({ blockId: '23588', debug: true });
-      if (!AdController) {
-        alert("Ads service not available.");
-        return;
-      }
-      await AdController.show();
-      
-      // Call API to record watch
-      const result = await watchTaskAd(userId);
-      setBalance(result.balance);
-      setTaskAdsWatched(result.taskAdsWatched);
-      setTaskClaimedBonuses(result.taskClaimedBonuses);
-      
-      if (result.bonusAwarded > 0) {
-        alert(`🎉 Congratulations! You've earned a ${result.bonusAwarded} BDT bonus!`);
+      const adCompleted = await showRewardedAd();
+      if (adCompleted) {
+        const result = await watchTaskAd(userId);
+        setBalance(result.balance);
+        setTaskAdsWatched(result.taskAdsWatched);
+        setTaskClaimedBonuses(result.taskClaimedBonuses);
+        
+        if (result.bonusAwarded > 0) {
+          alert(`🎉 Congratulations! You've earned a ${result.bonusAwarded} BDT bonus!`);
+        }
+      } else {
+        alert("Ad not completed. Try again.");
       }
     } catch (error) {
       console.error("Task ad failed", error);
@@ -98,7 +101,7 @@ export default function Tasks({
       </div>
 
       <div className="space-y-4">
-        {/* Ad Watch Bonuses – Separate from Spin */}
+        {/* Ad Watch Bonuses */}
         <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700 shadow-lg">
           <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
             <Gift className="text-pink-400" size={20} /> Ad Watch Bonuses
@@ -169,28 +172,6 @@ export default function Tasks({
           
           <p className="text-sm text-gray-400">
             Friends referred: <span className="text-yellow-400 font-bold">{referralCount}</span>
-          </p>
-        </div>
-
-        {/* Partner Tasks (AdsGram) – Placeholder */}
-        <div className="bg-gray-800 p-4 rounded-2xl border border-gray-700 shadow-lg">
-          <h3 className="text-lg font-bold text-white mb-2">Partner Tasks</h3>
-          
-          {window.Telegram?.WebApp?.initData ? (
-            <div id="adsgram-task-container">
-              {/* @ts-ignore */}
-              <adsgram-task blockId="task-23320"></adsgram-task>
-            </div>
-          ) : (
-            <div className="bg-gray-900 p-4 rounded-xl text-center border border-gray-700 border-dashed">
-              <p className="text-gray-400 text-sm">
-                Partner tasks are only available within the Telegram app.
-              </p>
-            </div>
-          )}
-          
-          <p className="text-xs text-gray-500 mt-2">
-            Complete the tasks above to earn rewards directly.
           </p>
         </div>
 
